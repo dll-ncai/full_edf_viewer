@@ -2217,7 +2217,7 @@ function readEEG() {
     const EEGchDivHieght = ($(window).height() - 115 - annotaionTextHieght - timeScaleHieght * 2) / EEGlength; //113
     const EEGdivHieght = EEGchDivHieght * myEEGlist.length;
     var ampfactor = $('#amp').data("amplitudeCalibration");
-    var EEGplotamp = EEGdivHieght * ampfactor * 0.26;
+    var EEGplotamp = -(EEGdivHieght * ampfactor * 0.26);
     var EKGdivHieght = EEGchDivHieght * montage_EKG_list.length;
     const otherdivHieght = EEGchDivHieght * montage_other_list.length;
     var ch_in_montage;
