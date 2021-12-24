@@ -2112,6 +2112,7 @@ function addTime(time,diff){
     t=1;
   }
   new_m = diff[1]+parseInt(time.charAt(3)+time.charAt(4)) + t;
+  t=0;
   if (new_m<0){
     new_m = 60 + new_m;
     t = -1;
