@@ -30,6 +30,146 @@ var csv_cols =3;
 var com = "No comment";
 var chArr = [];
 var myStart = "";
+
+// === Dropdown modal for comment selection ===
+const ABNORMALITY_OPTIONS = [
+    "No Comment",
+    "Sharp Wave",
+    "Spike and Wave",
+    "Delta Slow Wave",
+    "Theta Wave",
+    "Delta and Theta Wave",
+    "Polyspike",
+    "Spike Wave and Polyspike Wave",
+    "Low Voltage or No Waveform",
+    "Artifacts",
+    "Other"
+];
+
+function ensureCommentModal() {
+    if (document.getElementById("commentModal")) return;
+
+    const modal = document.createElement("div");
+    modal.id = "commentModal";
+    modal.style.cssText = `
+    display:none; position:fixed; inset:0;
+    background: rgba(0,0,0,0.4); z-index:100002;
+  `;
+
+    const box = document.createElement("div");
+    box.style.cssText = `
+    background:#fff; width:340px; max-width:90%;
+    margin:10% auto; padding:16px; border-radius:8px;
+    box-shadow:0 4px 12px rgba(0,0,0,.25); font-family:sans-serif;
+  `;
+
+    const title = document.createElement("div");
+    title.textContent = "Comment about abnormality";
+    title.style.cssText = "font-weight:600; margin-bottom:8px;";
+
+    const select = document.createElement("select");
+    select.id = "commentSelect";
+    select.style.cssText = "width:100%; padding:8px; margin-bottom:8px;";
+
+    ABNORMALITY_OPTIONS.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        select.appendChild(o);
+    });
+
+    // Extra input for "Other"
+    const otherInput = document.createElement("input");
+    otherInput.type = "text";
+    otherInput.placeholder = "Please specify...";
+    otherInput.style.cssText = "width:100%; padding:6px; display:none; margin-bottom:8px;";
+    otherInput.id = "otherComment";
+
+    select.addEventListener("change", () => {
+        if (select.value === "Other") {
+            otherInput.style.display = "block";
+        } else {
+            otherInput.style.display = "none";
+            otherInput.value = "";
+        }
+    });
+
+    const btnRow = document.createElement("div");
+    btnRow.style.cssText = "display:flex; gap:8px; justify-content:flex-end; margin-top:12px;";
+
+    const okBtn = document.createElement("button");
+    okBtn.textContent = "OK";
+    okBtn.style.cssText = "padding:6px 12px;";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.cssText = "padding:6px 12px;";
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(okBtn);
+
+    box.appendChild(title);
+    box.appendChild(select);
+    box.appendChild(otherInput);
+    box.appendChild(btnRow);
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+
+    modal._select = select;
+    modal._otherInput = otherInput;
+    modal._okBtn = okBtn;
+    modal._cancelBtn = cancelBtn;
+}
+
+function showCommentModal(defaultValue = "No Comment") {
+    ensureCommentModal();
+    const modal = document.getElementById("commentModal");
+    const select = modal._select;
+    const otherInput = modal._otherInput;
+
+    // preselect default
+    const idx = ABNORMALITY_OPTIONS.indexOf(defaultValue);
+    select.selectedIndex = idx >= 0 ? idx : 0;
+    otherInput.style.display = (select.value === "Other") ? "block" : "none";
+    otherInput.value = "";
+
+    modal.style.display = "block";
+
+    return new Promise((resolve) => {
+        const onOK = () => {
+            let val = select.value;
+            if (val === "No Comment") {
+                alert("Please select a valid comment (not 'No Comment').");
+                return; // do not close
+            }
+            if (val === "Other") {
+                val = otherInput.value.trim();
+                if (!val) {
+                    alert("Please specify your 'Other' comment.");
+                    return; // do not close
+                }
+                else
+                    val = "Other ("+val+")";
+            }
+            cleanup();
+            resolve(val);
+        };
+        const onCancel = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        const cleanup = () => {
+            modal.style.display = "none";
+            modal._okBtn.removeEventListener("click", onOK);
+            modal._cancelBtn.removeEventListener("click", onCancel);
+        };
+
+        modal._okBtn.addEventListener("click", onOK);
+        modal._cancelBtn.addEventListener("click", onCancel);
+    });
+}
+
 function getMousePos(div, evt) {
     var rect = div.getBoundingClientRect();
     return {
@@ -61,7 +201,7 @@ $(div).on('mousedown', function(e) {
 });
 
 //Mouseup
-$(div).on('mouseup', function(e) {
+$(div).on('mouseup', async function(e) {
     mousedown = false;
     var a = dur*(last_mousex/div.offsetWidth);
     if (tsec+a<10){
@@ -96,90 +236,65 @@ $(div).on('mouseup', function(e) {
         }
     });
     if (rect_start!=rect_end && chArr.length!=0){
-      if(window.confirm("Save selected region?\r\nNumber of channels = "+chArr.length+"\r\nStart: "+rect_start +"\r\nEnd: "+rect_end)){
-        com = window.prompt("Comment about abnormality","No Comment");
-        var s = chArr[0]
-        for (i=1; i < chArr.length ; i++){
-          s = s.concat(' ',chArr[i])
-        }
-        st_mil = rect_start.substring(9);
-        end_mil = rect_end.substring(9);
+        const ok = window.confirm(
+                  "Save selected region?\r\nNumber of channels = " + chArr.length +
+                  "\r\nStart: " + rect_start + "\r\nEnd: " + rect_end
+              );
+              if (ok) {
+                  // show dropdown modal instead of prompt
+                  const picked = await showCommentModal("No Comment");
+                  if (picked === null) {
+                      // user cancelled => do nothing (but still clear at the very end)
+                  } else {
+                      com = picked;
 
-        st_h = parseInt(rect_start.substring(0,2));
-        end_h = parseInt(rect_end.substring(0,2));
+                      // safer join for channel names
+                      var s = (chArr && chArr.length) ? chArr.join(' ') : "";
 
-        st_m = parseInt(rect_start.substring(3,5));
-        end_m = parseInt(rect_end.substring(3,5));
+                      // ===== keep your existing normalization/time-fix logic unchanged =====
+                      st_mil = rect_start.substring(9);
+                      end_mil = rect_end.substring(9);
 
-        st_s = parseInt(rect_start.substring(6,8));
-        end_s = parseInt(rect_end.substring(6,8));
+                      st_h = parseInt(rect_start.substring(0,2));
+                      end_h = parseInt(rect_end.substring(0,2));
 
-        if (st_s>59){
-          st_s = st_s - 60;
-          st_m = st_m + 1;
-        }
-        if (end_s>59){
-          end_s = end_s - 60;
-          end_m = end_m + 1;
-        }
+                      st_m = parseInt(rect_start.substring(3,5));
+                      end_m = parseInt(rect_end.substring(3,5));
 
-        if (st_m>59){
-          st_m = st_m - 60;
-          st_h = st_h + 1;
-        }
-        if (end_m>59){
-          end_m = end_m - 60;
-          end_h = end_h + 1;
-        }
+                      st_s = parseInt(rect_start.substring(6,8));
+                      end_s = parseInt(rect_end.substring(6,8));
 
-        if (st_h>23){
-          st_h = st_h - 24;
-        }
-        if (end_h>23){
-          end_h = end_h - 24;
-        }
+                      if (st_s>59){ st_s = st_s - 60; st_m = st_m + 1; }
+                      if (end_s>59){ end_s = end_s - 60; end_m = end_m + 1; }
 
-        if (st_h<10){
-          st_h = '0' + st_h;
-          st_h = st_h.substring(0,2);
-        }
-        if (st_m<10){
-          st_m = '0' + st_m;
-          st_m = st_m.substring(0,2);
-        }
-        if (st_s<10){
-          st_s = '0' + st_s;
-          st_s = st_s.substring(0,2);
-        }
+                      if (st_m>59){ st_m = st_m - 60; st_h = st_h + 1; }
+                      if (end_m>59){ end_m = end_m - 60; end_h = end_h + 1; }
 
-        if (end_h<10){
-          end_h = '0' + end_h;
-          end_h = end_h.substring(0,2);
-        }
-        if (end_m<10){
-          end_m = '0' + end_m;
-          end_m = end_m.substring(0,2);
-        }
-        if (end_s<10){
-          end_s = '0' + end_s;
-          end_s = end_s.substring(0,2);
-        }
+                      if (st_h>23){ st_h = st_h - 24; }
+                      if (end_h>23){ end_h = end_h - 24; }
 
+                      if (st_h<10){ st_h = ('0' + st_h).substring(0,2); }
+                      if (st_m<10){ st_m = ('0' + st_m).substring(0,2); }
+                      if (st_s<10){ st_s = ('0' + st_s).substring(0,2); }
 
+                      if (end_h<10){ end_h = ('0' + end_h).substring(0,2); }
+                      if (end_m<10){ end_m = ('0' + end_m).substring(0,2); }
+                      if (end_s<10){ end_s = ('0' + end_s).substring(0,2); }
 
-        rect_start = st_h + ':' + st_m + ':' + st_s + ':' + st_mil;
-        rect_end = end_h + ':' + end_m + ':' + end_s + ':' + end_mil;
-        new_row = ['','','',rect_start,rect_end,s,com];
-        csv_ar.push(new_row);
-      }
-    }
-    else {
-      alert("No region was selected. Please click ONCE outside the drawing area and try again")
-    }
+                      rect_start = st_h + ':' + st_m + ':' + st_s + ':' + st_mil;
+                      rect_end = end_h + ':' + end_m + ':' + end_s + ':' + end_mil;
 
+                      new_row = ['', '', '', rect_start, rect_end, s, com];
+                      csv_ar.push(new_row);
+                  }
+              }
+          } else {
+              alert("No region was selected. Please click ONCE outside the drawing area and try again")
+          }
 
-    ctx.clearRect(0,0,canvas.width,canvas.height); //clear canvas
-    chArr = [];
+          // clear overlay + reset
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          chArr = [];
 });
 
 //Mousemove
@@ -211,38 +326,62 @@ function modalWrite(){
     modal.style.display = "block";
 }
 button.onclick = function() {
-  var us_age = $('input[name="getAge"]').val();
-  var us_gen
-  if (document.getElementById('gen1').checked) {
-    us_gen = document.getElementById('gen1').value;
-  }
-  if (document.getElementById('gen1').checked) {
-    us_gen = document.getElementById('gen1').value;
-  }
-  if (document.getElementById('gen1').checked) {
-    us_gen = document.getElementById('gen1').value;
-  }
-  modal.style.display = "none";
-  csv_ar[1][0] = us_gen;
-  csv_ar[1][1] = us_age;
-  writeToCSV(csv_ar)
-}
+    const us_age = $('input[name="getAge"]').val().trim();
+    const checked = document.querySelector('input[name="gender"]:checked');
+    const us_gen = checked ? checked.value : "";
 
+    // === Checks ===
+    if (!us_age) {
+        alert("Please enter age.");
+        return; // stop, don’t close
+    }
+    if (!us_gen) {
+        alert("Please select gender.");
+        return; // stop, don’t close
+    }
+
+    // Only if both are filled:
+    modal.style.display = "none";
+    console.log("Need to add check of no abnormality labeled")
+    csv_ar[1][0] = us_gen;
+    csv_ar[1][1] = us_age;
+    writeToCSV(csv_ar);
+};
+// button.onclick = function() {
+//   var us_age = $('input[name="getAge"]').val();
+//   var us_gen
+//   if (document.getElementById('gen1').checked) {
+//     us_gen = document.getElementById('gen1').value;
+//   }
+//   if (document.getElementById('gen1').checked) {
+//     us_gen = document.getElementById('gen1').value;
+//   }
+//   if (document.getElementById('gen1').checked) {
+//     us_gen = document.getElementById('gen1').value;
+//   }
+//   modal.style.display = "none";
+//   csv_ar[1][0] = us_gen;
+//   csv_ar[1][1] = us_age;
+//   writeToCSV(csv_ar)
+// }
+let uploadedFileName = "my_data.csv"; // fallback
 function writeToCSV(ar){
+    console.log(uploadedFileName)
     ar[1][2] = myStart;
     let csvContent = "data:text/csv;charset=utf-8," + ar.map(e => e.join(",")).join("\n");
     var encodedUri = encodeURI(csvContent);
     var link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "my_data.csv");
+    link.setAttribute("download", uploadedFileName.replace(/\.edf$/i, ".csv") ||"my_data.csv");
     document.body.appendChild(link); // Required for FF
     link.click();
     erase();
   }
+
   window.onclick = function(event) {
-    if (event.target == modal) {
-      modal.style.display = "none";
-    }
+    // if (event.target == modal) {
+    //   modal.style.display = "none";
+    // }
   }
 
 function erase(){
@@ -255,17 +394,20 @@ function erase(){
 document.getElementById('ann-input').addEventListener('change', annotate_local, false);
 function annotate_local(e)
 {
-var ann_csv = e.target.files[0]
-var reader = new FileReader();
-reader.addEventListener('load', function (e) {
-        let csvdata = e.target.result;
+    var ann_csv = e.target.files[0]
+    if (ann_csv) {
+            uploadedFileName = ann_csv.name;   // capture name
+    }
+    var reader = new FileReader();
+    reader.addEventListener('load', function (e) {
+            let csvdata = e.target.result;
 
 
-        let newLinebrk = csvdata.split("\n");
-        for(let i = 0; i < newLinebrk.length; i++) {
+            let newLinebrk = csvdata.split("\n");
+            for(let i = 0; i < newLinebrk.length; i++) {
 
-        parsedata.push(newLinebrk[i].split(","))
-      }
+            parsedata.push(newLinebrk[i].split(","))
+          }
 
     });
 
@@ -301,8 +443,6 @@ reader.addEventListener('load', function (e) {
       trudata = trudata.map(function(val){
         return val.slice(t_col1,t_col2+1)
       })
-
-
 
       trudata.shift()
 

@@ -697,6 +697,7 @@ function analysis_header(e) {
     ch_dic = {};
     edf = {};
     edf.fileName = e.target.files[0];
+    uploadedFileName = edf.fileName.name
 
     $("#EEGMontage").data('ch1', null);
     $("#EEGMontage").data('ch2', null);
