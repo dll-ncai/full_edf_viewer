@@ -181,12 +181,40 @@ $('.amplitSelect').click(function() {
         return
     };
     var amp = $(this).data('amplitudeCalibration');
+    // if amp toggle is ON, scale the selected amp
+    if ($('#ampToggleBtn').data('scaled')) {
+        amp = amp * 1000;
+    }
     $('#amp').data("amplitudeCalibration", amp);
     $('#ampNumber').text((amp) + ' µV ');
     if (edf.fileName) {
         call = 'e';
         readEEG();
     };
+});
+
+// amp toggle button handler
+$('#ampToggleBtn').data('scaled', 0);
+$('#ampToggleBtn').click(function() {
+    var scaled = $('#ampToggleBtn').data('scaled') || 0;
+    var amp = $('#amp').data('amplitudeCalibration') || 0.30;
+    if (scaled == 0) {
+        amp = amp * 1000;
+        $('#amp').data('amplitudeCalibration', amp);
+        $('#ampNumber').text((amp) + ' µV ');
+        $('#ampToggleBtn').data('scaled', 1);
+        $('#ampToggleBtn').text('Amp x1k ON');
+    } else {
+        amp = amp / 1000;
+        $('#amp').data('amplitudeCalibration', amp);
+        $('#ampNumber').text((amp) + ' µV ');
+        $('#ampToggleBtn').data('scaled', 0);
+        $('#ampToggleBtn').text('Amp x1k OFF');
+    }
+    if (edf.fileName) {
+        call = 'e';
+        readEEG();
+    }
 });
 
 $('.HH').on('input', function() {
