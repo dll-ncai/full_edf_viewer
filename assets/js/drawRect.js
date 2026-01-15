@@ -32,19 +32,37 @@ var chArr = [];
 var myStart = "";
 
 // === Dropdown modal for comment selection ===
-const ABNORMALITY_OPTIONS = [
+const ABNORMALITY_OPTIONS =
+//     [
+//     "No Comment",
+//     "Sharp Wave",
+//     "Spike and Wave",
+//     "Delta Slow Wave",
+//     "Theta Wave",
+//     "Delta and Theta Wave",
+//     "Polyspike",
+//     "Spike Wave and Polyspike Wave",
+//     "Low Voltage or No Waveform",
+//     "Artifacts",
+//     "Other"
+// ];
+[
     "No Comment",
-    "Sharp Wave",
+    "Artifacts",
+    "Normal",
     "Spike and Wave",
+    "Sharp Wave",
+    "Spike and Delta",
+    "Triphasic Wave",
     "Delta Slow Wave",
     "Theta Wave",
     "Delta and Theta Wave",
     "Polyspike",
-    "Spike Wave and Polyspike Wave",
-    "Low Voltage or No Waveform",
-    "Artifacts",
+    "Burst Suppression",
+    "Low Voltage",
     "Other"
 ];
+
 
 function ensureCommentModal() {
     if (document.getElementById("commentModal")) return;
