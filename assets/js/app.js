@@ -28,6 +28,7 @@ $('.amp30s').data('amplitudeCalibration', 0.30);
 $('.amp50s').data('amplitudeCalibration', 0.50);
 $('.amp100s').data('amplitudeCalibration', 1.00);
 $('#amp').data('amplitudeCalibration', 0.30);
+$('#unitOverride').data('scaleOverride', 'auto');
 $('#GO').data('tab', 1);
 $('#montage').data('montageCode', 'm1');
 $('.Montage1').data('montageNum', 1);
@@ -68,6 +69,9 @@ var first_draw = false;
 var ch_dic = {};
 var edf = {};
 var call = null;
+var unitScale = {
+    autoIqrMultiplier: 1,
+};
 var myStart = "";
 var montage = {
     'm1': {
@@ -176,45 +180,55 @@ $('#startWindowtime').click(function() {
     } catch (err) {};
 });
 
+function getUnitScaleOverride() {
+    return $('#unitOverride').data('autoIqr') ? 'autoIqr' : 'auto';
+}
+
+function getUnitLabelForChannel(ch) {
+    return ch_dic[ch].channel_units || '';
+}
+
+function getUnitScaleMultiplier() {
+    var override = getUnitScaleOverride();
+    if (override === 'autoIqr') {
+        return unitScale.autoIqrMultiplier;
+    }
+    return 1;
+}
+
+function updateUnitUI() {
+    var enabled = $('#unitOverride').data('autoIqr');
+    if (enabled) {
+        $('#unitOverride').text('Auto IQR ON');
+    } else {
+        $('#unitOverride').text('Auto IQR OFF');
+    }
+}
+
+$('#unitOverride').data('autoIqr', 0);
+$('#unitOverride').click(function() {
+    var enabled = $('#unitOverride').data('autoIqr') || 0;
+    $('#unitOverride').data('autoIqr', enabled ? 0 : 1);
+    updateUnitUI();
+    if (edf.fileName) {
+        call = 'e';
+        readEEG();
+    }
+});
+
+updateUnitUI();
+
 $('.amplitSelect').click(function() {
     if (edf.ampAutoChanging == 1) {
         return
     };
     var amp = $(this).data('amplitudeCalibration');
-    // if amp toggle is ON, scale the selected amp
-    if ($('#ampToggleBtn').data('scaled')) {
-        amp = amp * 1000;
-    }
     $('#amp').data("amplitudeCalibration", amp);
     $('#ampNumber').text((amp) + ' µV ');
     if (edf.fileName) {
         call = 'e';
         readEEG();
     };
-});
-
-// amp toggle button handler
-$('#ampToggleBtn').data('scaled', 0);
-$('#ampToggleBtn').click(function() {
-    var scaled = $('#ampToggleBtn').data('scaled') || 0;
-    var amp = $('#amp').data('amplitudeCalibration') || 0.30;
-    if (scaled == 0) {
-        amp = amp * 1000;
-        $('#amp').data('amplitudeCalibration', amp);
-        $('#ampNumber').text((amp) + ' µV ');
-        $('#ampToggleBtn').data('scaled', 1);
-        $('#ampToggleBtn').text('Amp x1k ON');
-    } else {
-        amp = amp / 1000;
-        $('#amp').data('amplitudeCalibration', amp);
-        $('#ampNumber').text((amp) + ' µV ');
-        $('#ampToggleBtn').data('scaled', 0);
-        $('#ampToggleBtn').text('Amp x1k OFF');
-    }
-    if (edf.fileName) {
-        call = 'e';
-        readEEG();
-    }
 });
 
 $('.HH').on('input', function() {
@@ -2086,7 +2100,62 @@ function scale(int16_data) {
     var p_min = ch_dic[edf.ch].channel_phys_minimums;
     var d_min = ch_dic[edf.ch].channel_dig_minimums;
     var scale = ch_dic[edf.ch].channel_scaling_factors;
-    return (scale * (int16_data - d_min) + p_min);
+    return (scale * (int16_data - d_min) + p_min) * getUnitScaleMultiplier();
+}
+
+function computeAutoIqrMultiplier(data, records_in_window, window_duration) {
+    if (!edf.channel_labels || edf.channel_labels.length === 0) {
+        return 1;
+    }
+    var ch = edf.channel_labels[0];
+    if (ch === 'EDF Annotations' && edf.channel_labels.length > 1) {
+        ch = edf.channel_labels[1];
+    }
+    if (!ch_dic[ch] || !ch_dic[ch].bytes_table || ch_dic[ch].bytes_table.length === 0) {
+        return 1;
+    }
+    var channel = [];
+    for (i in ch_dic[ch].bytes_table) {
+        _ = data.slice(ch_dic[ch].bytes_table[i][0], ch_dic[ch].bytes_table[i][1]);
+        for (x in _) {
+            channel.push(_[x]);
+        }
+    }
+    var prev_ch = edf.ch;
+    edf.ch = ch;
+    var p_min = ch_dic[edf.ch].channel_phys_minimums;
+    var d_min = ch_dic[edf.ch].channel_dig_minimums;
+    var scale_factor = ch_dic[edf.ch].channel_scaling_factors;
+    channel = channel.map(function(sample) {
+        return (scale_factor * (sample - d_min) + p_min);
+    });
+    edf.ch = prev_ch;
+    if (!channel.length) {
+        return 1;
+    }
+    channel.sort(function(a, b) {
+        return a - b;
+    });
+    var q25 = channel[Math.floor(0.25 * (channel.length - 1))];
+    var q75 = channel[Math.floor(0.75 * (channel.length - 1))];
+    var iqr = q75 - q25;
+    if (!iqr) {
+        return 1;
+    }
+    var automated_scale = iqr * 2;
+    return getAutoIqrTargetForUnit(ch) / automated_scale;
+}
+
+function getAutoIqrTargetForUnit(ch) {
+    var units = (ch_dic[ch] && ch_dic[ch].channel_units) ? ch_dic[ch].channel_units : '';
+    var normalized = units.toLowerCase().replace('µ', 'u').trim();
+    if (normalized === 'uv' || normalized === 'uV'.toLowerCase()) {
+        return 1;
+    }
+    if (normalized === 'mv') {
+        return 1 / 1000;
+    }
+    return 1 / 1000000;
 }
 var samp_start = 0;
 var samp_left = 0;
@@ -2379,12 +2448,15 @@ function readEEG() {
     var end_clip = Math.floor((rec_end_frac) * parseFloat(edf.channel_samples_per_record));
     var start = edf.records_start[recStart];
     var end = edf.records_start[recEnd];
-    var reader = new FileReader();
-    var blob = edf.fileName.slice(start, end);
-    reader.readAsArrayBuffer(blob);
-    reader.onloadend = function() {
-        var buf = reader.result;
-        var data = new Int16Array(buf);
+        var reader = new FileReader();
+        var blob = edf.fileName.slice(start, end);
+        reader.readAsArrayBuffer(blob);
+        reader.onloadend = function() {
+            var buf = reader.result;
+            var data = new Int16Array(buf);
+            if (getUnitScaleOverride() === 'autoIqr') {
+                unitScale.autoIqrMultiplier = computeAutoIqrMultiplier(data, records_in_window, window_duration) || 1;
+            }
         var channel;
         var invert_factor = $('#invert').data('invertCh') * -1;
 
@@ -3176,7 +3248,7 @@ function readEEG() {
                         chDiv = $("<div class='ChDiv'><span id= '" + id + "' >" + ch + "</span></div>");
                         chDiv.addClass('OthersDeactivate');
                     } else {
-                        chDiv = $("<div class='ChDiv OtherSpan'>" + ch + " (" + ch_dic[ch].channel_units + ")\nmin - max <span id= '" + id + "' class='OtherSpan OtherPlotMinMaxSpan' style='' >(" + min_max + ")</span></div>");
+                        chDiv = $("<div class='ChDiv OtherSpan'>" + ch + " (" + getUnitLabelForChannel(ch) + ")\nmin - max <span id= '" + id + "' class='OtherSpan OtherPlotMinMaxSpan' style='' >(" + min_max + ")</span></div>");
                     }
 
                     chDiv.attr("id", ch + '_div')
