@@ -27,6 +27,17 @@ $('.amp20s').data('amplitudeCalibration', 0.20);
 $('.amp30s').data('amplitudeCalibration', 0.30);
 $('.amp50s').data('amplitudeCalibration', 0.50);
 $('.amp100s').data('amplitudeCalibration', 1.00);
+$('.amp1u').data('amplitudeCalibration', 1);
+$('.amp2u').data('amplitudeCalibration', 2);
+$('.amp3u').data('amplitudeCalibration', 3);
+$('.amp5u').data('amplitudeCalibration', 5);
+$('.amp7u').data('amplitudeCalibration', 7);
+$('.amp10u').data('amplitudeCalibration', 10);
+$('.amp15u').data('amplitudeCalibration', 15);
+$('.amp20u').data('amplitudeCalibration', 20);
+$('.amp30u').data('amplitudeCalibration', 30);
+$('.amp50u').data('amplitudeCalibration', 50);
+$('.amp100u').data('amplitudeCalibration', 100);
 $('#amp').data('amplitudeCalibration', 0.30);
 $('#unitOverride').data('scaleOverride', 'auto');
 $('#GO').data('tab', 1);
@@ -2092,6 +2103,7 @@ function CreateTrace(col) {
               shape: 'spline',
               smoothing: 0.8
               }
+        // type: 'scatter'
     };
     return trace
 }
@@ -2349,21 +2361,19 @@ function readEEG() {
     var window_duration = $('#windowduratin').data("window_duration");
     var t_beg = edf.t_beg;
     var t_end = t_beg + $('#windowduratin').data("window_duration");
-      edf.initial_condition_end = 0;
+    if (t_beg >= 2) {
+        t_beg = t_beg - 2;
+        edf.initial_condition_start = -2;
+    } else {
         edf.initial_condition_start = 0;
-  //  if (t_beg >= 2) {
-    //    t_beg = t_beg - 2;
-      //  edf.initial_condition_start = -2;
-  //  } else {
-    //    edf.initial_condition_start = 0;
-    //};
-    //if (t_end <= edf.file_duration - 3) {
-      //  t_end = t_end + 2;
-      //  edf.initial_condition_end = -2;
-    //} else {
-      //  edf.initial_condition_end = 0;
-    //}
-    //window_duration = window_duration + (-1 * (edf.initial_condition_start + edf.initial_condition_end));
+    };
+    if (t_end <= edf.file_duration - 3) {
+        t_end = t_end + 2;
+        edf.initial_condition_end = -2;
+    } else {
+        edf.initial_condition_end = 0;
+    }
+    window_duration = window_duration + (-1 * (edf.initial_condition_start + edf.initial_condition_end));
     const hp = 30;
     var EEG_plotdic = {};
     for (i in myEEGlist) {
