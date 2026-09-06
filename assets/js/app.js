@@ -387,7 +387,7 @@ function Jump() {
     t_end = t_beg + window_duration;
     var datetime = edf.date_time.clone();
     var st_date_time = datetime.add(t_beg, 'seconds');
-    $('#DateTime').text(st_date_time.format("YYYY-MM-DD"));
+    $('#DateTime').text('YYYY:MM:DD');
     $('#startWindowtime').text(st_date_time.format("HH:mm:ss"));
     datetime = edf.date_time.clone();
     var end_date_time = datetime.add(t_end, 'seconds');
@@ -630,7 +630,7 @@ $('.windowSelect').click(function() {
         t_end = parseInt(t_beg) + duration;
         var datetime = edf.date_time.clone();
         var st_date_time = datetime.add(t_beg, 'seconds');
-        $('#DateTime').text(st_date_time.format("YYYY-MM-DD"));
+        $('#DateTime').text('YYYY:MM:DD');
         $('#startWindowtime').text(st_date_time.format("HH:mm:ss"));
         datetime = edf.date_time.clone();
         var end_date_time = datetime.add(t_end, 'seconds');
@@ -660,7 +660,7 @@ $('#next_sec').on('click', function() {
         t_end = edf.t_beg + window_duration;
         var datetime = edf.date_time.clone();
         var st_date_time = datetime.add(t_beg, 'seconds');
-        $('#DateTime').text(st_date_time.format("YYYY-MM-DD"));
+        $('#DateTime').text('YYYY:MM:DD');
         $('#startWindowtime').text(st_date_time.format("HH:mm:ss"));
         datetime = edf.date_time.clone();
         var end_date_time = datetime.add(t_end, 'seconds');
@@ -682,7 +682,7 @@ $('#previous_sec').on('click', function() {
         t_end = edf.t_beg + window_duration;
         var datetime = edf.date_time.clone();
         var st_date_time = datetime.add(t_beg, 'seconds');
-        $('#DateTime').text(st_date_time.format("YYYY-MM-DD"));
+        $('#DateTime').text('YYYY:MM:DD');
         $('#startWindowtime').text(st_date_time.format("HH:mm:ss"));
         datetime = edf.date_time.clone();
         var end_date_time = datetime.add(t_end, 'seconds');
@@ -710,7 +710,7 @@ function nextPage() {
         t_end = edf.t_beg + window_duration;
         var datetime = edf.date_time.clone();
         var st_date_time = datetime.add(t_beg, 'seconds');
-        $('#DateTime').text(st_date_time.format("YYYY-MM-DD"));
+        $('#DateTime').text('YYYY:MM:DD');
         $('#startWindowtime').text(st_date_time.format("HH:mm:ss"));
         datetime = edf.date_time.clone();
         var end_date_time = datetime.add(t_end, 'seconds');
@@ -733,7 +733,7 @@ function previousPage() {
         t_end = edf.t_beg + window_duration;
         var datetime = edf.date_time.clone();
         var st_date_time = datetime.add(t_beg, 'seconds');
-        $('#DateTime').text(st_date_time.format("YYYY-MM-DD"));
+        $('#DateTime').text('YYYY:MM:DD');
         $('#startWindowtime').text(st_date_time.format("HH:mm:ss"));
         datetime = edf.date_time.clone();
         var end_date_time = datetime.add(t_end, 'seconds');
@@ -818,7 +818,7 @@ function Analysis_Header_First_Section(data) {
             year = 2000 + year;
         }
         edf.date_time = moment(edf.start_date.slice(0, 2) + '-' + edf.start_date.slice(3, 5) + '-' + year + ' ' + edf.start_time.replace('.', ':'), "DD-MM-YYYY HH:mm:ss")
-        $('#DateTime').text(edf.date_time.format("YYYY-MM-DD"));
+        $('#DateTime').text('YYYY:MM:DD');
         var window_dur = $('#windowduratin').data("window_duration");
         $('#startWindowtime').text(edf.date_time.format("HH:mm:ss"));
         var endwindow = edf.date_time.clone();
